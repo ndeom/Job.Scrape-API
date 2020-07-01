@@ -1,6 +1,5 @@
 import dotenv from "dotenv";
 dotenv.config();
-import mysql from "mysql";
 import shortid from "shortid";
 import {
   getStackOverflowData,
@@ -12,9 +11,6 @@ import {
 /**
  * Collect data from YCombinator, Stack Overflow, and TripleByte-------------
  */
-
-//Start Timer
-console.time("Scrape Time");
 
 Promise.all([
   getStackOverflowData(),
@@ -83,145 +79,4 @@ Promise.all([
     job.location,
     job.logo,
   ]);
-
-  // const jobTechTableInsert = compositeData
-  //   .reduce((accum, job) => {
-  //     if (typeof job.category === "object") {
-  //       let uniqueCategories = [...new Set(job.category)];
-  //       return [
-  //         ...accum,
-  //         ...uniqueCategories.map((category) => [job.job_id, category]),
-  //       ];
-  //     }
-  //     return [...accum, [job.job_id, job.category]];
-  //   }, [])
-  //   .filter((job) => job[1]);
-
-  // console.log("TECH TABLE: ", jobTechTableInsert);
-
-  // const jobLocationTableInsert = compositeData.reduce((accum, job) => {
-  //   if (typeof job.location === "object") {
-  //     return [
-  //       ...accum,
-  //       ...job.location.map((location) => [job.job_id, location]),
-  //     ];
-  //   }
-  //   return [...accum, [job.job_id, job.location]];
-  // }, []);
-
-  /**
-   * Truncate all table contents and fill with the newly scraped data.
-   * This will be done every 12 hours and ensures that there are no duplicate jobs
-   * from the same sources.
-   */
-
-  const connection = mysql.createConnection({
-    host: process.env.ENDPOINT,
-    user: process.env.USER,
-    password: process.env.PASSWORD,
-  });
-
-  connection.query(
-    "TRUNCATE TABLE jobs.jobs_main",
-    (error, results, fields) => {
-      if (error) throw error;
-      console.log("RESULTS: ", results);
-      console.log("FIELDS: ", fields);
-    }
-  );
-
-  connection.query(
-    "INSERT INTO jobs.jobs_main (job_id, title, pub_date, link, company, technologies, location, logo) VALUES ?",
-    [jobsTableInsert],
-    (error, results, fields) => {
-      if (error) throw error;
-      console.log("MAIN QUERY");
-      console.log("RESULTS: ", results);
-      console.log("FIELDS: ", fields);
-    }
-  );
-
-  connection.end();
-
-  // const pool = mysql.createPool({
-  //   connectionLimit: 3,
-  //   host: process.env.ENDPOINT,
-  //   user: process.env.USER,
-  //   password: process.env.PASSWORD,
-  // });
-
-  // pool.getConnection((err, connection) => {
-  //   if (err) throw err;
-
-  //   connection.query(
-  //     "TRUNCATE TABLE jobs.jobs_main",
-  //     (error, results, fields) => {
-  //       connection.release();
-  //       if (error) throw error;
-  //       console.log("RESULTS: ", results);
-  //       console.log("FIELDS: ", fields);
-  //     }
-  //   );
-
-  //   connection.query(
-  //     "TRUNCATE TABLE jobs.job_tech",
-  //     (error, results, fields) => {
-  //       connection.release();
-  //       if (error) throw error;
-  //       console.log("RESULTS: ", results);
-  //       console.log("FIELDS: ", fields);
-  //     }
-  //   );
-
-  //   connection.query(
-  //     "TRUNCATE TABLE jobs.job_location",
-  //     (error, results, fields) => {
-  //       connection.release();
-  //       if (error) throw error;
-  //       console.log("RESULTS: ", results);
-  //       console.log("FIELDS: ", fields);
-  //     }
-  //   );
-
-  //   connection.query(
-  //     "INSERT INTO jobs.jobs_main (job_id, title, pub_date, location, link, company) VALUES ?",
-  //     [jobsTableInsert],
-  //     (error, results, fields) => {
-  //       connection.release();
-  //       if (error) throw error;
-  //       console.log("MAIN QUERY");
-  //       console.log("RESULTS: ", results);
-  //       console.log("FIELDS: ", fields);
-  //     }
-  //   );
-
-  //   connection.query(
-  //     "INSERT INTO jobs.job_tech (job_id, technology) VALUES ?",
-  //     [jobTechTableInsert],
-  //     (error, results, fields) => {
-  //       connection.release();
-  //       if (error) throw error;
-  //       console.log("TECH QUERY");
-  //       console.log("RESULTS: ", results);
-  //       console.log("FIELDS: ", fields);
-  //     }
-  //   );
-
-  //   connection.query(
-  //     "INSERT INTO jobs.job_location (job_id, location) VALUES ?",
-  //     [jobLocationTableInsert],
-  //     (error, results, fields) => {
-  //       connection.release();
-  //       if (error) throw error;
-  //       console.log("LOCATION QUERY");
-  //       console.log("RESULTS: ", results);
-  //       console.log("FIELDS: ", fields);
-  //     }
-  //   );
-
-  //   pool.end((err) => {
-  //     if (err) throw err;
-  //     console.timeEnd("Scrape Time");
-  //   });
-  //});
 });

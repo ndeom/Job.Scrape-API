@@ -33,15 +33,12 @@ app.get("/api", (req, res) => {
 
   connection.query(queryString, queryValues, (error, results, fields) => {
     if (error) throw error;
-
-    console.log("RESULTS: ", results);
-    //console.log("FIELDS: ", fields);
     return res.json(results);
   });
 });
 
 app.listen(port, () => {
-  console.log(`App is listening on PORT: ${port}`);
+  console.log(`App is listening...`);
 });
 
 app.use((err, req, res, next) => {
