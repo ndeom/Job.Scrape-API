@@ -61,6 +61,12 @@ export async function getYCombinatorData() {
   const $ = cheerio.load(html);
   const body = $("body");
 
+  const logos = body.find(".logo").map((i, el) => {
+    return {
+      logo: el.attribs.src,
+    };
+  });
+
   const jobTitlesAndLinks = body.find(".job-name").map((i, el) => {
     return {
       title: el.children[0].data,
@@ -87,6 +93,7 @@ export async function getYCombinatorData() {
   return keys.map((i) => ({
     ...jobTitlesAndLinks[i],
     ...jobDetails[i],
+    ...logos[i],
   }));
 }
 
@@ -96,6 +103,12 @@ export async function getTriplebyteData() {
   let html = await response.text();
   let $ = cheerio.load(html);
   let body = $("body");
+
+  let logos = body.find(".max-h-20").map((i, el) => {
+    return {
+      logo: el.attribs["data-src"],
+    };
+  });
 
   let jobTitlesAndLinks = body.find(".font-bold > a").map((i, el) => {
     return {
@@ -141,6 +154,7 @@ export async function getTriplebyteData() {
     ...companies[i],
     ...fieldsAndTechnologies[i],
     ...location[i],
+    ...logos[i],
   }));
 
   for (let i = 2; i < 11; i++) {
@@ -148,6 +162,12 @@ export async function getTriplebyteData() {
     html = await response.text();
     $ = cheerio.load(html);
     body = $("body");
+
+    logos = body.find(".max-h-20").map((i, el) => {
+      return {
+        logo: el.attribs["data-src"],
+      };
+    });
 
     jobTitlesAndLinks = body.find(".font-bold > a").map((i, el) => {
       return {
@@ -197,11 +217,16 @@ export async function getTriplebyteData() {
         ...companies[i],
         ...fieldsAndTechnologies[i],
         ...location[i],
+        ...logos[i],
       })),
     ];
   }
   return finalOutput;
 }
+
+/**
+ * Returns a date string formatted for MySQL input
+ */
 
 export function sqlDateFormat(date) {
   date = typeof date === "string" ? new Date(date) : date;
@@ -210,4 +235,93 @@ export function sqlDateFormat(date) {
     date.getMonth() + 1 < 10 ? `0${date.getMonth() + 1}` : date.getMonth() + 1;
   const year = date.getFullYear();
   return `${year}-${month}-${day}`;
+}
+
+/**
+ * Returns a formatted MySQL query based on form inputs with
+ * appropriate escapes
+ */
+
+export function queryFormatter(queryString) {
+  const {
+    keywords = null,
+    city = null,
+    state = null,
+    zipcode = null,
+    tech = null,
+    skill = null,
+  } = queryString;
+
+  let specifiers = [];
+  let queryValues = [];
+  let baseQuery = `SELECT * FROM jobs.jobs_main`;
+
+  if (keywords) {
+    specifiers.push(
+      "WHERE MATCH (title, company, technologies, location) AGAINST (?)"
+    );
+    queryValues.push(keywords);
+  }
+
+  switch (skill) {
+    case "Beginner": {
+      specifiers.length
+        ? (specifiers = [specifiers[0].concat(" junior entry")])
+        : specifiers.push(
+            "WHERE MATCH (title, company, technologies, location) AGAINST ('junior entry')"
+          );
+      break;
+    }
+    case "Intermediate":
+      break;
+    case "Experienced": {
+      specifiers.length
+        ? (queryValues = [queryValues[0].concat(" senior lead principle")])
+        : specifiers.push(
+            "WHERE MATCH (title, company, technologies, location) AGAINST ('senior lead principle')"
+          );
+      break;
+    }
+    default:
+      break;
+  }
+
+  if (city && state) {
+    specifiers.length
+      ? specifiers.push(" AND LOCATE(?, location)")
+      : specifiers.push(" WHERE LOCATE(?, location)");
+    queryValues.push(`${city}, ${state}`);
+  }
+
+  if (city && !state) {
+    specifiers.length
+      ? specifiers.push(" AND LOCATE(?, location)")
+      : specifiers.push(" WHERE LOCATE(?, location)");
+    queryValues.push(city);
+  }
+
+  if (state && !city) {
+    specifiers.length
+      ? specifiers.push(" AND LOCATE(?, location)")
+      : specifiers.push(" WHERE LOCATE(?, location)");
+    queryValues.push(state);
+  }
+
+  if (tech) {
+    specifiers.length ? specifiers.concat("AND") : specifiers.concat("WHERE");
+    tech.split(" ").forEach((el, i) => {
+      i < 1
+        ? specifiers.push("WHERE LOCATE(?, technologies)")
+        : specifiers.push(" AND LOCATE(?, technologies)");
+      queryValues.push(el);
+    });
+  }
+
+  console.log("queryString: ", baseQuery.concat(" ", specifiers.join(" ")));
+  console.log("queryValues: ", queryValues);
+
+  return {
+    queryString: baseQuery.concat(" ", specifiers.join(" ")),
+    queryValues,
+  };
 }
