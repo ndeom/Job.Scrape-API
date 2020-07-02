@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
+import mysql from "mysql";
 import shortid from "shortid";
 import {
   getStackOverflowData,
@@ -79,4 +80,32 @@ Promise.all([
     job.location,
     job.logo,
   ]);
+
+  const connection = mysql.createConnection({
+    host: process.env.ENDPOINT,
+    user: process.env.USER,
+    password: process.env.PASSWORD,
+  });
+
+  connection.query(
+    "TRUNCATE TABLE jobs.jobs_main",
+    (error, results, fields) => {
+      if (error) throw error;
+      console.log("RESULTS: ", results);
+      console.log("FIELDS: ", fields);
+    }
+  );
+
+  connection.query(
+    "INSERT INTO jobs.jobs_main (job_id, title, pub_date, link, company, technologies, location, logo) VALUES ?",
+    [jobsTableInsert],
+    (error, results, fields) => {
+      if (error) throw error;
+      console.log("MAIN QUERY");
+      console.log("RESULTS: ", results);
+      console.log("FIELDS: ", fields);
+    }
+  );
+
+  connection.end();
 });
